@@ -3,7 +3,6 @@
 #include <string.h>
 #define MAXSIZE 50
 
-
 struct Data{
     /*
      * O structura pt a determina usor ziua,luna si anul unei date calendaristice
@@ -12,10 +11,10 @@ struct Data{
     int luna;
     int an;
 };
- struct Tranzactie{
-     /*
-      * Structura principala folosita pt tranzactii
-      */
+struct Tranzactie{
+    /*
+     * Structura principala folosita pt tranzactii
+     */
     struct Data data;
     int amount;
     char description[255];
@@ -24,6 +23,9 @@ struct Data{
 typedef struct Tranzactie Tranzactie;
 typedef struct  Data  Data;
 struct Cont{
+    /*
+     * Structura principala pt conturi
+     */
     char password[255];
     int numarTranzactii;
     Tranzactie Lista[MAXSIZE];
@@ -72,7 +74,10 @@ Tranzactie NewTranzactie(char newdata[],int newamount,char newdesc[],char newtyp
     strcpy(t.type,newtype);
     return t;
 }
-Cont NewCont(char password[],int nr,Tranzactie L[MAXSIZE]){
+Cont NewCont(char password[],int nr,Tranzactie* L){
+    /*
+     *  Constructor pt variabila de tip Cont
+     */
     Cont c;
     strcpy(c.password,password);
     c.numarTranzactii = nr;
@@ -92,10 +97,33 @@ int AddTranzactie(Tranzactie t,Tranzactie L[],int numberT){
     return numberT;
 }
 int AddCont(Cont c,Cont L[],int numberC){
+    /*
+     * Adauga un nou cont in lista curenta de conturi
+     */
     if(numberC < MAXSIZE) {
         L[numberC] = c;
         numberC++;
     }
+    return numberC;
+}
+int DeleteTranzactie(Tranzactie *L,int numberT,int select){
+    /*
+     * Sterge o tranzactie din Lista de tranzactii (de obicei un cont)
+     */
+    for(int i=select;i<numberT-1;i++){
+            L[i]=L[i+1];
+    }
+    numberT--;
+    return numberT;
+}
+int DeleteCont(Cont *L,int numberC,int select){
+    /*
+     * Sterge un cont din lista curenta
+     */
+    for(int i=select;i<numberC-1;i++){
+            L[i]=L[i+1];
+    }
+    numberC--;
     return numberC;
 }
 int Balance(Tranzactie L[],int ID){
@@ -132,18 +160,14 @@ void ShowListaTranzactii(Tranzactie L[],int ID) {
         ShowTranzactie(L[i]);
     }
 }
-void ShowCont(Cont C){
-    for(int i=0;i<C.numarTranzactii;i++) {
-        printf("Tranzactie Nr. %d\n", i+1);
-        ShowTranzactie(C.Lista[i]);
-    }
-}
-void ShowListaConturi(Cont L[],int ID){
 
+void ShowListaConturi(Cont L[],int ID){
+    /*
+     *  Afiseaza o lista simpla cu cate conturi exista in aplicatie
+     */
     for(int i=0;i<ID;i++) {
-        printf("%d\n",L[i].numarTranzactii);
         printf("Cont Nr. %d\n", i+1);
-        ShowCont(L[i]);
+        printf("Nr de tranzactii %d\n",L[i].numarTranzactii);
     }
 }
 void ShowPeriod(Tranzactie L[],int ID){
@@ -161,11 +185,11 @@ void ShowPeriod(Tranzactie L[],int ID){
     int ok=0;
     for(int i=0;i<ID;i++){
         if((L[i].data.an<=DataEnd.an) && (L[i].data.an>=DataInit.an))
-              if(((L[i].data.luna<=DataEnd.luna) && (L[i].data.luna>=DataInit.luna)) || (((L[i].data.luna>=DataEnd.luna) && (L[i].data.luna<=DataInit.luna))))
-                  if(((L[i].data.zi<=DataEnd.zi) && (L[i].data.zi>=DataInit.zi)) || ((L[i].data.zi>=DataEnd.zi) && (L[i].data.zi<=DataInit.zi)) || ((L[i].data.zi<=DataEnd.zi) && (L[i].data.zi<=DataInit.zi) && (L[i].data.luna!=DataInit.luna)) || ((L[i].data.zi>=DataEnd.zi) && (L[i].data.zi>=DataInit.zi) && (L[i].data.luna!=DataEnd.luna)) ) {
-                      ShowTranzactie(L[i]);
-                      ok=1;
-                  }
+            if(((L[i].data.luna<=DataEnd.luna) && (L[i].data.luna>=DataInit.luna)) || (((L[i].data.luna>=DataEnd.luna) && (L[i].data.luna<=DataInit.luna))))
+                if(((L[i].data.zi<=DataEnd.zi) && (L[i].data.zi>=DataInit.zi)) || ((L[i].data.zi>=DataEnd.zi) && (L[i].data.zi<=DataInit.zi)) || ((L[i].data.zi<=DataEnd.zi) && (L[i].data.zi<=DataInit.zi) && (L[i].data.luna!=DataInit.luna)) || ((L[i].data.zi>=DataEnd.zi) && (L[i].data.zi>=DataInit.zi) && (L[i].data.luna!=DataEnd.luna)) ) {
+                    ShowTranzactie(L[i]);
+                    ok=1;
+                }
     }
     if(ok==0)
         printf("Nu exista tranzactii in acea perioada!\n");
@@ -224,22 +248,28 @@ int LoadFromFile(Tranzactie *L){
     fclose(f);
     return tempNumber;
 }
+int ValidareDataTranzactie(char newdata[],Tranzactie L[],int ID){
+    /*
+     * Verifica daca data unei tranzactii este valida din pct de vedere cronologic cu ultima tranzactie din contul curent
+     */
+    newdata[strcspn(newdata,"\n")] = 0;
+    Data temp = NewData(newdata);
+    if(L[ID-1].data.an>=temp.an)
+        if(L[ID-1].data.luna>=temp.luna)
+            if(L[ID-1].data.zi>temp.zi)
+                return 0;
+    return 1;
+}
 int ValidareTranzactie(char newdata[],int newamount,char newdesc[],char newtype[],Tranzactie L[],int ID) {
     /*
      * Verificam datele unei noi tranzactii pt a determina daca acestea sunt valide pt adaugare in lista
      * Ne uitam la data,suma si tip, deoarece descrierea este la discretia utilizatorului
-     * Mai si verificam dacaa cumva tranzactia noua adauagata ar fi inaintea celei mai recente tranzactii din lista, in sens cronologic
      */
     newdata[strcspn(newdata,"\n")] = 0;
     newdesc[strcspn(newdesc,"\n")] = 0;
     newtype[strcspn(newtype,"\n")] = 0;
     Data temp = NewData(newdata);
-    /*
-    if(L[ID-1].data.an>=temp.an)
-        if(L[ID-1].data.luna>=temp.luna)
-            if(L[ID-1].data.zi>temp.zi)
-                return 0;
-    */
+
     if ((temp.zi <= 0 || temp.zi > 31) || (temp.luna <= 0 || temp.luna > 12) || (temp.an <= 0)) {
         return 0;
     }
@@ -254,6 +284,9 @@ int ValidareTranzactie(char newdata[],int newamount,char newdesc[],char newtype[
     return 1;
 }
 int AddListaTranzactii(Cont C,Tranzactie *L){
+    /*
+     * Adauga o noua tranzactie in contul curent dat ca parametru
+     */
     int nr;
     char newdata[10];
     int newamount;
@@ -269,40 +302,61 @@ int AddListaTranzactii(Cont C,Tranzactie *L){
     fgets(newdesc,255,stdin);
     printf("Introduceti tipul tranzactiei:\n");
     fgets(newtype,11,stdin);
-    if(ValidareTranzactie(newdata,newamount,newdesc,newtype,L,C.numarTranzactii)==0) {
-        printf("S-au introdus date invalide!\n");
+    if(C.numarTranzactii!=0) {
+        if (ValidareTranzactie(newdata, newamount, newdesc, newtype, L, C.numarTranzactii) == 0)
+            printf("S-au introdus date invalide!\n");
+        else if (ValidareDataTranzactie(newdata, L, C.numarTranzactii) == 0) {
+            printf("S-au introdus date invalide!\n");
+        } else {
+            Tranzactie temp = NewTranzactie(newdata, newamount, newdesc, newtype);
+            int currentfirstaccount = AddTranzactie(temp, L, C.numarTranzactii);
+            if (currentfirstaccount == C.numarTranzactii) {
+                printf("Nu s-a putut adauga.\n");
+                return C.numarTranzactii;
+            } else {
+                nr = currentfirstaccount;
+                return nr;
+            }
+        }
     }else{
         Tranzactie temp = NewTranzactie(newdata, newamount, newdesc, newtype);
-        int currentfirstaccount = AddTranzactie(temp,L,C.numarTranzactii);
-        if(currentfirstaccount == C.numarTranzactii)
-            printf("Nu s-a putut adauga.\n");
-        else
-           nr = currentfirstaccount;
+        int currentfirstaccount = AddTranzactie(temp, L, C.numarTranzactii);
+        nr = currentfirstaccount;
+        return nr;
     }
-    return nr;
+    return C.numarTranzactii;
 }
+
 void Menu(){
     /*
-     * Meniul pt interfata contului
+     * Meniul pt management-ul de tranzactii
      */
     printf("Alegeti optiunea: \n");
     printf("1.Adaugare \n");
-    printf("2.Afisare \n");
-    printf("3.Calcul Total \n");
-    printf("4.Afisare pt o perioada \n");
-    printf("5.Salvare tranzactii \n");
-    printf("6.Incarcare de tranzactii \n");
+    printf("2.Stergere \n");
+    printf("3.Afisare \n");
+    printf("4.Calcul Total \n");
+    printf("5.Afisare pt o perioada \n");
+    printf("6.Salvare tranzactii \n");
+    printf("7.Incarcare de tranzactii \n");
     printf("0.Iesire \n");
 }
 void MenuPrincipal(){
+    /*
+     * Meniul pt interfata aplicatiei
+     */
     printf("Alegeti optiunea: \n");
     printf("1.Afisare conturi \n");
     printf("2.Selectare cont \n");
     printf("3.Adaugare cont \n");
+    printf("4.Stergere cont \n");
     printf("0.Iesire \n");
 }
 
 int MenuTranzactii(Cont C,Tranzactie *L){
+    /*
+     * Meniul pt interfata contului
+     */
     int option;
     Menu();
     scanf("%d",&option);
@@ -312,20 +366,26 @@ int MenuTranzactii(Cont C,Tranzactie *L){
             //Adaugare
             C.numarTranzactii = AddListaTranzactii(C,L);
         }else if(option==2){
+            //Stergere
+            int select;
+            printf("Dati ID-ul tranzactiei de sters \n");
+            scanf("%d",&select);
+            C.numarTranzactii = DeleteTranzactie(L,C.numarTranzactii,select-1);
+        }else if(option == 3) {
             //Afisare
-            ShowListaTranzactii(C.Lista,C.numarTranzactii);
-        }else if(option==3){
+            ShowListaTranzactii(C.Lista, C.numarTranzactii);
+        }else if(option==4){
             //Calcul Total
             int total = Balance(C.Lista,C.numarTranzactii);
             printf("Totalul din cont este %d \n",total);
-        }else if(option == 4){
+        }else if(option == 5){
             //Afisare tranzactii dintr-o perioada data
             ShowPeriod(C.Lista,C.numarTranzactii);
             ClearBuffer();
-        }else if(option == 5){
+        }else if(option == 6){
             //Salvare de tranzactii intr-un fisier txt
             SaveToFile(C.Lista,C.numarTranzactii);
-        }else if(option == 6){
+        }else if(option == 7){
             //Incarcare de tranzactii dintr-un fisier txt
             C.numarTranzactii = LoadFromFile(C.Lista);
         }else{
@@ -338,6 +398,9 @@ int MenuTranzactii(Cont C,Tranzactie *L){
     return C.numarTranzactii;
 }
 int main() {
+    /*
+     * Main Program
+     */
     struct Tranzactie TransLista1[MAXSIZE],TransLista2[MAXSIZE];
     int firsttrans=0,secondtrans=0;
     firsttrans = AddTranzactie(NewTranzactie("5/9/2023",250,"Cumparaturi","Cheltuiala"),TransLista1,firsttrans);
@@ -377,11 +440,28 @@ int main() {
             }
         }else if(option == 3){
             int nrT=0;
-            Tranzactie NewContList[MAXSIZE];
+            Tranzactie NewTransList[MAXSIZE];
             char pass[255];
             printf("Introduceti parola pt contul nou \n");
             fgets(pass,255,stdin);
-            nraccount = AddCont(NewCont(pass,nrT,NewContList),ContList,nraccount);
+            nraccount = AddCont(NewCont(pass,nrT,NewTransList),ContList,nraccount);
+        }else if(option == 4){
+            int select;
+            printf("Specificati ID-ul contului pe care il doriti \n");
+            scanf("%d",&select);
+            ClearBuffer();
+            if(select > nraccount) {
+                printf("Acel cont nu exista! \n");
+            }else{
+                char pass[255];
+                printf("Introduceti parola pt a sterge contul %d \n",select);
+                fgets(pass,255,stdin);
+                if(strcmp(ContList[select-1].password,pass)==0){
+                    nraccount = DeleteCont(ContList,nraccount,select-1);
+                }else{
+                    printf("Ati introdus parola gresita! \n");
+                }
+            }
         }
         MenuPrincipal();
         scanf("%d",&option);
